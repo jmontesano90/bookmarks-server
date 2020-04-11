@@ -6,8 +6,10 @@ const helmet = require("helmet");
 const { NODE_ENV } = require("./config");
 const winston = require("winston");
 const uuid = require("uuid/v4");
+const bookMarkRouter = require("./bookmark/bookmark-router");
 
 const app = express();
+app.use(express.json());
 
 const morganOption = NODE_ENV === "production" ? "tiny" : "common";
 
@@ -47,6 +49,7 @@ app.use(function validateBearerToken(req, res, next) {
   next();
 });
 
+app.use(bookMarkRouter);
 app.use(morgan(morganOption));
 app.use(helmet());
 app.get("/", (req, res) => {
@@ -64,61 +67,6 @@ app.use(function errorHandler(error, req, res, next) {
   res.status(500).json(response);
 });
 
-app.get("/bookmarks", (req, res) => {
-  res.json(bookmarks);
-});
-
-app.get("/bookmarks/:id", (req, res) => {
-  const { id } = req.params;
-  const bookmark = bookmarks.find((b) => b.id == id);
-
-  if (!bookmark) {
-    logger.error(`Bookmark with id ${id} not found.`);
-    return res.status(404).send("Bookmark Not Found");
-  }
-  res.json(bookmark);
-});
-
-app.post("/bookmarks", (req, res) => {
-  const { title, url, description, rating } = req.body;
-  if (!title) {
-    logger.error(`Title is required`);
-    return res.status(400).send("Invalid data");
-  }
-  if (!url) {
-    logger.error(`Url is required`);
-    return res.status(400).send("Invalid data");
-  }
-  if (!description) {
-    logger.error(`Description is required`);
-    return res.status(400).send("Invalid data");
-  }
-  if (!rating) {
-    logger.error(`Rating is required`);
-    return res.status(400).send("Invalid data");
-  }
-
-  const id = uuid();
-
-  const bookmark = {
-    title: "test",
-    url: "basic.com",
-    description: "boring",
-    rating: "1",
-    id: "1",
-  };
-
-  bookmarks.push(bookmark);
-
-  logger.info(`Bookmark with ${id} created`);
-
-  res
-    .status(201)
-    .location(`http://localhost:8000/bookmarks/${id}`)
-    .json(bookmark);
-});
-
 app.use(cors());
-app.use(express.json());
 
 module.exports = app;
