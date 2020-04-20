@@ -5,23 +5,12 @@ const cors = require("cors");
 const helmet = require("helmet");
 const { NODE_ENV } = require("./config");
 const winston = require("winston");
-const uuid = require("uuid/v4");
 const bookMarkRouter = require("./bookmark/bookmark-router");
 
 const app = express();
 app.use(express.json());
 
 const morganOption = NODE_ENV === "production" ? "tiny" : "common";
-
-const bookmarks = [
-  {
-    title: "Basic",
-    url: "basic.com",
-    description: "noring",
-    rating: 1,
-    id: 1,
-  },
-];
 
 const logger = winston.createLogger({
   level: "info",
