@@ -3,16 +3,16 @@ const knex = require("knex");
 const app = require("../src/app");
 const { makeBookMarksArray } = require("./bookmarks.fixtures");
 
-describe.only("Bookmarks Endpoints", function () {
+const API_TOKEN = process.env.API_TOKEN;
+
+describe("Bookmarks Endpoints", function () {
   let db;
 
-  before("make knex instance", () => {
-    db = knex({
-      client: "pg",
-      connection: process.env.TEST_DB_URL,
-    });
-    app.set("db", db);
+  db = knex({
+    client: "pg",
+    connection: process.env.TEST_DB_URL,
   });
+  app.set("db", db);
 
   after("disconnect from db", () => db.destroy());
 
@@ -23,7 +23,10 @@ describe.only("Bookmarks Endpoints", function () {
   describe(`GET /bookmarks`, () => {
     context(`Given no bookmarks`, () => {
       it(`responds with 200 and an empty list`, () => {
-        return supertest(app).get("/bookmarks").expect(200, []);
+        return supertest(app)
+          .get("/bookmarks")
+          .set("Authorization", `Bearer ${API_TOKEN}`)
+          .expect(200, []);
       });
     });
     context("Given there are bookmarks in the database", () => {
@@ -34,7 +37,10 @@ describe.only("Bookmarks Endpoints", function () {
       });
 
       it("responds with 200 and all of the articles", () => {
-        return supertest(app).get("/bookmarks").expect(200, testBookMarks);
+        return supertest(app)
+          .get("/bookmarks")
+          .set("Authorization", `Bearer ${API_TOKEN}`)
+          .expect(200, testBookMarks);
       });
     });
   });
@@ -45,7 +51,8 @@ describe.only("Bookmarks Endpoints", function () {
         const bookmarkId = 123456;
         return supertest(app)
           .get(`/bookmarks/${bookmarkId}`)
-          .expect(404, { error: { message: `Bookmark doesn't exist` } });
+          .set("Authorization", `Bearer ${API_TOKEN}`)
+          .expect(404, { error: { message: `Bookmark Not Found` } });
       });
     });
     context("Given there are bookmarks in the database", () => {
@@ -59,9 +66,80 @@ describe.only("Bookmarks Endpoints", function () {
         const bookmarkId = 2;
         const expectedBookmark = testBookMarks[bookmarkId - 1];
         return supertest(app)
-          .get(`/articles/${bookmarkId}`)
+          .get(`/bookmarks/${bookmarkId}`)
+          .set("Authorization", `Bearer ${API_TOKEN}`)
           .expect(200, expectedBookmark);
       });
     });
   });
+
+  describe(`POST /bookmarks`, () => {
+    it(`creates a bookmark, responding with 201 and the new article`, function () {
+      const newBookMark = {
+        title: "New test Bookmark",
+        url: "test.com",
+        description: "Test new bookmark content",
+        rating: 1,
+      };
+      return supertest(app)
+        .post("/bookmarks")
+        .set("Authorization", `Bearer ${API_TOKEN}`)
+        .send(newBookMark)
+        .expect(201)
+        .expect((res) => {
+          expect(res.body.title).to.eql(newBookMark.title);
+          expect(res.body.url).to.eql(newBookMark.url);
+          expect(res.body.description).to.eql(newBookMark.description);
+          expect(res.body.rating).to.eql(newBookMark.rating);
+        })
+        .then((postRes) =>
+          supertest(app)
+            .get(`/bookmarks/${postRes.body.id}`)
+            .set("Authorization", `Bearer ${API_TOKEN}`)
+            .expect(postRes.body)
+        );
+    });
+
+    const requiredFields = ["title", "url", "description", "rating"];
+    requiredFields.forEach((field) => {
+      const newBookMark = {
+        title: "New test Bookmark",
+        url: "test.com",
+        description: "Test new bookmark content",
+        rating: 1,
+      };
+
+      it(`responds with 400 and an error message when the '${field}' is missing`, () => {
+        delete newBookMark[field];
+
+        return supertest(app)
+          .post("/bookmarks")
+          .set("Authorization", `Bearer ${API_TOKEN}`)
+          .send(newBookMark)
+          .expect(400, {
+            error: { message: `Missing '${field}' in request body` },
+          });
+      });
+    });
+  });
+
+  /*describe(`DELETE /bookmarks/:id`, () => {
+    context("Given there are bookmarks in the database", () => {
+      const testBookMarks = makeBookMarksArray();
+
+      beforeEach("insert bookmarks", () => {
+        const idToRemove = 2;
+        const expectedBookMarks = testBookMarks.filter(
+          (bookmark) => bookmark.id !== idToRemove
+        );
+
+        return supertest(app)
+          .delete(`/bookmarks/${idToRemove}`)
+          .expect(204)
+          .then((res) =>
+            supertest(app).get(`/bookmarks`).expect(expectedBookMarks)
+          );
+      });
+    });
+  });*/
 });
