@@ -20,11 +20,11 @@ describe("Bookmarks Endpoints", function () {
 
   afterEach("cleanup", () => db("bookmarks").truncate());
 
-  describe(`GET /bookmarks`, () => {
+  describe(`GET /api/bookmarks`, () => {
     context(`Given no bookmarks`, () => {
       it(`responds with 200 and an empty list`, () => {
         return supertest(app)
-          .get("/bookmarks")
+          .get("/api/bookmarks")
           .set("Authorization", `Bearer ${API_TOKEN}`)
           .expect(200, []);
       });
@@ -38,19 +38,19 @@ describe("Bookmarks Endpoints", function () {
 
       it("responds with 200 and all of the articles", () => {
         return supertest(app)
-          .get("/bookmarks")
+          .get("/api/bookmarks")
           .set("Authorization", `Bearer ${API_TOKEN}`)
           .expect(200, testBookMarks);
       });
     });
   });
 
-  describe(`GET /bookmarks/:id`, () => {
+  describe(`GET /api/bookmarks/:id`, () => {
     context(`Given no bookmarks`, () => {
       it(`responds with 404`, () => {
         const bookmarkId = 123456;
         return supertest(app)
-          .get(`/bookmarks/${bookmarkId}`)
+          .get(`/api/bookmarks/${bookmarkId}`)
           .set("Authorization", `Bearer ${API_TOKEN}`)
           .expect(404, { error: { message: `Bookmark Not Found` } });
       });
@@ -66,14 +66,14 @@ describe("Bookmarks Endpoints", function () {
         const bookmarkId = 2;
         const expectedBookmark = testBookMarks[bookmarkId - 1];
         return supertest(app)
-          .get(`/bookmarks/${bookmarkId}`)
+          .get(`/api/bookmarks/${bookmarkId}`)
           .set("Authorization", `Bearer ${API_TOKEN}`)
           .expect(200, expectedBookmark);
       });
     });
   });
 
-  describe(`POST /bookmarks`, () => {
+  describe(`POST /api/bookmarks`, () => {
     it(`creates a bookmark, responding with 201 and the new article`, function () {
       const newBookMark = {
         title: "New test Bookmark",
@@ -82,7 +82,7 @@ describe("Bookmarks Endpoints", function () {
         rating: 1,
       };
       return supertest(app)
-        .post("/bookmarks")
+        .post("/api/bookmarks")
         .set("Authorization", `Bearer ${API_TOKEN}`)
         .send(newBookMark)
         .expect(201)
@@ -94,7 +94,7 @@ describe("Bookmarks Endpoints", function () {
         })
         .then((postRes) =>
           supertest(app)
-            .get(`/bookmarks/${postRes.body.id}`)
+            .get(`/api/bookmarks/${postRes.body.id}`)
             .set("Authorization", `Bearer ${API_TOKEN}`)
             .expect(postRes.body)
         );
@@ -113,7 +113,7 @@ describe("Bookmarks Endpoints", function () {
         delete newBookMark[field];
 
         return supertest(app)
-          .post("/bookmarks")
+          .post("/api/bookmarks")
           .set("Authorization", `Bearer ${API_TOKEN}`)
           .send(newBookMark)
           .expect(400, {
@@ -123,7 +123,7 @@ describe("Bookmarks Endpoints", function () {
     });
   });
 
-  /*describe(`DELETE /bookmarks/:id`, () => {
+  describe(`DELETE /api/bookmarks/:id`, () => {
     context("Given there are bookmarks in the database", () => {
       const testBookMarks = makeBookMarksArray();
 
@@ -134,12 +134,57 @@ describe("Bookmarks Endpoints", function () {
         );
 
         return supertest(app)
-          .delete(`/bookmarks/${idToRemove}`)
+          .delete(`/api/bookmarks/${idToRemove}`)
           .expect(204)
           .then((res) =>
-            supertest(app).get(`/bookmarks`).expect(expectedBookMarks)
+            supertest(app).get(`/api/bookmarks`).expect(expectedBookMarks)
           );
       });
     });
-  });*/
+  });
+
+  describe.only(`PATCH /api/bookmarks/id`, () => {
+    context(`Given no bookmarks`, () => {
+      it(`responds with 404`, () => {
+        const bookmarkId = 123456;
+        return supertest(app)
+          .patch(`/api/bookmarks/${bookmarkId}`)
+          .set("Authorization", `Bearer ${API_TOKEN}`)
+          .expect(404, { error: { message: `Bookmark Not Found` } });
+      });
+    });
+
+    context("Given there are bookmarks in the database", () => {
+      const testBookmarks = makeBookMarksArray();
+
+      beforeEach("insert bookmarks", () => {
+        return db.into("bookmarks").insert(testBookmarks);
+      });
+
+      it("responds with 204 and updates the bookmark", () => {
+        const idToUpdate = 2;
+        const updateBookmark = {
+          title: "updated bookmark title",
+          url: "updatedbookmark.com",
+          description: "updated bookmark content",
+          rating: "4",
+        };
+        const expectedBookmark = {
+          ...testBookmarks[idToUpdate - 1],
+          ...updateBookmark,
+        };
+        return supertest(app)
+          .patch(`/api/bookmarks/${idToUpdate}`)
+          .set("Authorization", `Bearer ${API_TOKEN}`)
+          .send(updateBookmark)
+          .expect(204)
+          .then((res) =>
+            supertest(app)
+              .get(`/api/bookmarks/${idToUpdate}`)
+              .set("Authorization", `Bearer ${API_TOKEN}`)
+              .expect(expectedBookmark)
+          );
+      });
+    });
+  });
 });

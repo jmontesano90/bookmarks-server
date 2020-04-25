@@ -6,6 +6,7 @@ const { bookmarks } = require("../store");
 const logger = require("../logger");
 const BookmarksService = require("../bookmarks-service");
 const jsonParser = express.json();
+const path = require("path");
 
 const serializeBookmark = (bookmark) => ({
   id: bookmark.id,
@@ -16,7 +17,7 @@ const serializeBookmark = (bookmark) => ({
 });
 
 bookMarkRouter
-  .route("/bookmarks")
+  .route("/api/bookmarks")
   .get((req, res, next) => {
     BookmarksService.getAllBookMarks(req.app.get("db"))
       .then((bookmarks) => {
@@ -40,15 +41,15 @@ bookMarkRouter
       .then((bookmark) => {
         res
           .status(201)
-          .location(`/bookmarks/${bookmark.id}`)
+          .location(path.posix.join(`/api/bookmarks/${bookmark.id}`))
           .json(serializeBookmark(bookmark));
       })
       .catch(next);
   });
 
 bookMarkRouter
-  .route("/bookmarks/:bookmark_id")
-  .get((req, res, next) => {
+  .route("/api/bookmarks/:bookmark_id")
+  .all((req, res, next) => {
     const { bookmark_id } = req.params;
     BookmarksService.getById(req.app.get("db"), bookmark_id)
       .then((bookmark) => {
@@ -67,6 +68,19 @@ bookMarkRouter
     BookmarksService.deleteBookmark(req.app.get("db"), bookmark_id)
       .then((numRowsAffected) => {
         logger.info(`Bookmark with id ${bookmark_id} deleted.`);
+        res.status(204).end();
+      })
+      .catch(next);
+  })
+  .patch(jsonParser, (req, res, next) => {
+    const { title, description, url, rating } = req.body;
+    const bookmarkToUpdate = { title, description, url, rating };
+    BookmarksService.updateBookmark(
+      req.app.get("db"),
+      req.params.bookmark_id,
+      bookmarkToUpdate
+    )
+      .then((numRowsAffected) => {
         res.status(204).end();
       })
       .catch(next);
