@@ -72,25 +72,9 @@ bookMarkRouter
       })
       .catch(next);
   })
-  .patch(bodyParser, (req, res, next) => {
-    const { title, url, description, rating } = req.body;
-    const bookmarkToUpdate = { title, url, description, rating };
-
-    const numberOfValues = Object.values(bookmarkToUpdate).filter(Boolean)
-      .length;
-    if (numberOfValues === 0) {
-      logger.error(`Invalid update without required fields`);
-      return res.status(400).json({
-        error: {
-          message: `Request body must content either 'title', 'url', 'description' or 'rating'`,
-        },
-      });
-    }
-
-    const error = getBookmarkValidationError(bookmarkToUpdate);
-
-    if (error) return res.status(400).send(error);
-
+  .patch(jsonParser, (req, res, next) => {
+    const { title, description, url, rating } = req.body;
+    const bookmarkToUpdate = { title, description, url, rating };
     BookmarksService.updateBookmark(
       req.app.get("db"),
       req.params.bookmark_id,
@@ -101,5 +85,7 @@ bookMarkRouter
       })
       .catch(next);
   });
+
+//test
 
 module.exports = bookMarkRouter;
